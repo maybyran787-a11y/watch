@@ -315,7 +315,9 @@ select{appearance:none;-webkit-appearance:none;
 .qrrow{display:flex;gap:8px;margin:6px 0 4px}
 .qr{display:none}
 .qr.on{display:block}
-.qr img{width:100%;max-width:320px;height:auto;display:block;margin:8px auto}
+.qr img{width:100%;max-width:340px;height:auto;display:block;margin:8px auto;cursor:zoom-in;image-rendering:auto}
+.qr img.zoom{position:fixed;inset:0;margin:auto;max-width:none;width:96vw;height:auto;z-index:99;
+  background:#fff;cursor:zoom-out;box-shadow:0 0 0 200vmax rgba(0,0,0,.85)}
 .qr .btn{margin:0 auto 4px;display:block}
 
 /* 口味分类 */
@@ -5262,38 +5264,42 @@ var qrcode = function() {
   }
 
   function drawQR(qr, n) {
-    var W = 760, H = 940;
+    /* 画布按 3 倍像素画，屏幕上按 360px 显示 = 1:1，扫得清 */
+    var W = 1080, H = 1420;
     var c = document.createElement('canvas');
     c.width = W; c.height = H;
     var g = c.getContext('2d');
     if (!g) return null;
     g.fillStyle = '#fff9f2';
     g.fillRect(0, 0, W, H);
-    roundRect(g, 26, 26, W - 52, H - 52, 40);
+    roundRect(g, 40, 40, W - 80, H - 80, 60);
     g.fillStyle = '#ffffff';
     g.fill();
-    g.lineWidth = 8;
+    g.lineWidth = 12;
     g.strokeStyle = '#2b2430';
     g.stroke();
     g.textAlign = 'center';
     g.fillStyle = '#2b2430';
-    g.font = '700 46px "Noto Serif SC", Georgia, serif';
-    g.fillText('Maria 专属', W / 2, 112);
+    g.font = '700 66px "Noto Serif SC", Georgia, serif';
+    g.fillText('Maria 专属', W / 2, 160);
     g.fillStyle = '#8a7480';
-    g.font = '400 22px system-ui, sans-serif';
-    g.fillText('扫一下，把我的口味带给你', W / 2, 154);
-    var size = 560, x0 = (W - size) / 2, y0 = 196, cell = size / n;
+    g.font = '400 32px system-ui, sans-serif';
+    g.fillText('扫一下，把我的口味带给你', W / 2, 222);
+    var size = 900, x0 = (W - size) / 2, y0 = 290;
+    var cell = Math.floor(size / n);
+    var real = cell * n;
+    x0 = Math.round((W - real) / 2);
     g.fillStyle = '#ffffff';
-    g.fillRect(x0 - 14, y0 - 14, size + 28, size + 28);
+    g.fillRect(x0 - 24, y0 - 24, real + 48, real + 48);
     g.fillStyle = '#2b2430';
     for (var r = 0; r < n; r++) {
       for (var col = 0; col < n; col++) {
-        if (qr.isDark(r, col)) g.fillRect(x0 + col * cell, y0 + r * cell, Math.ceil(cell), Math.ceil(cell));
+        if (qr.isDark(r, col)) g.fillRect(x0 + col * cell, y0 + r * cell, cell, cell);
       }
     }
     g.fillStyle = '#8a7480';
-    g.font = '400 20px system-ui, sans-serif';
-    g.fillText('扫完复制文字，粘到页面里的输入框', W / 2, H - 62);
+    g.font = '400 28px system-ui, sans-serif';
+    g.fillText('扫完复制文字，粘到页面里的输入框', W / 2, H - 96);
     return c;
   }
 
@@ -5310,7 +5316,7 @@ var qrcode = function() {
       /* 如果这页是通过网址打开的，二维码就直接指向“网址+口味”，扫一下就能进 */
       ui.qrIsUrl = /^https?:/.test(location.protocol) && !!location.href;
       var qrText = ui.qrIsUrl ? location.href.split('#')[0] + '#s=' + payload : payload;
-      var qr = window.qrcode(0, 'M');
+      var qr = window.qrcode(0, 'L');
       qr.addData(qrText);
       qr.make();
       var n = qr.getModuleCount();
@@ -5318,7 +5324,7 @@ var qrcode = function() {
       if (canvas) {
         var url = canvas.toDataURL('image/png');
         ui.qrURL = url;
-        box.innerHTML = '<img class="qrimg" alt="QR" src="' + url + '">' +
+        box.innerHTML = '<img class="qrimg" alt="QR" src="' + url + '" data-act="zoomQR">' +
           '<button class="btn small" data-act="saveQR">' + esc(tr('qrSave')) + '</button>' +
           '<p class="hint">' + esc(ui.qrIsUrl ? tr('qrHintUrl') : tr('qrHint')) + '</p>';
       } else {
@@ -5486,6 +5492,11 @@ var qrcode = function() {
     if (act === 'doImport') { doImport(); return; }
     if (act === 'showQR') { showQR(); return; }
     if (act === 'saveQR') { saveQR(); return; }
+    if (act === 'zoomQR') {
+      var img = document.querySelector('.qrimg');
+      if (img) img.classList.toggle('zoom');
+      return;
+    }
     if (act === 'reset') {
       if (window.confirm(tr('resetAsk'))) {
         store.removeItem(LS); store.removeItem(LS_ME); store.removeItem(LS_CACHE);
